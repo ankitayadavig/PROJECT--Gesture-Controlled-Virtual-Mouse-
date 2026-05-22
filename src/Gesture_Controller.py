@@ -1,7 +1,20 @@
 # Imports
 
+import sys
+
 import cv2
-import mediapipe as mp
+try:
+    import mediapipe as mp
+except ModuleNotFoundError as exc:
+    if exc.name == "mediapipe":
+        raise ModuleNotFoundError(
+            "mediapipe is not installed for this interpreter. "
+            f"You are using Python {sys.version_info.major}.{sys.version_info.minor}. "
+            "This project targets Windows with Python 3.8.x. "
+            "Create a Python 3.8 virtual environment and run "
+            "'pip install -r requirements.txt'."
+        ) from exc
+    raise
 import pyautogui
 import math
 from enum import IntEnum
@@ -12,6 +25,7 @@ from google.protobuf.json_format import MessageToDict
 import screen_brightness_control as sbcontrol
 
 pyautogui.FAILSAFE = False
+
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
 
@@ -162,7 +176,7 @@ class HandRecog:
             try:
                 ratio = round(dist/dist2,1)
             except:
-                ratio = round(dist1/0.01,1)
+                ratio = round(dist/0.01, 1) if dist2 == 0 else round(dist/dist2, 1)
 
             self.finger = self.finger << 1
             if ratio > 0.5 :
@@ -595,6 +609,7 @@ class GestureController:
         GestureController.cap.release()
         cv2.destroyAllWindows()
 
-# uncomment to run directly
-# gc1 = GestureController()
-# gc1.start()
+# Allow direct execution without starting the webcam on import.
+if __name__ == "__main__":
+    gc1 = GestureController()
+    gc1.start()

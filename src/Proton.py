@@ -16,16 +16,30 @@ import Gesture_Controller
 #import Gesture_Controller_Gloved as Gesture_Controller
 import app
 from threading import Thread
+import traceback
 
 
 # -------------Object Initialization---------------
 today = date.today()
 r = sr.Recognizer()
 keyboard = Controller()
-engine = pyttsx3.init('sapi5')
-engine = pyttsx3.init()
-voices = engine.getProperty('voices')
-engine.setProperty('voice', voices[0].id)
+
+
+def init_tts_engine():
+    try:
+        engine = pyttsx3.init('sapi5') # sapi5 is standard for Windows
+        voices = engine.getProperty('voices')
+        if voices:
+            engine.setProperty('voice', voices[0].id)
+        return engine
+    except Exception:
+        print("Warning: text-to-speech could not be initialized. Proton will continue without voice output.")
+        traceback.print_exc()
+        return None
+
+
+engine = init_tts_engine()
+mic_available = True
 
 # ----------------Variables------------------------
 file_exp_status = False
@@ -38,8 +52,9 @@ def reply(audio):
     app.ChatBot.addAppMsg(audio)
 
     print(audio)
-    engine.say(audio)
-    engine.runAndWait()
+    if engine is not None:
+        engine.say(audio)
+        engine.runAndWait()
 
 
 def wish():
@@ -54,13 +69,28 @@ def wish():
         
     reply("I am Proton, how may I help you?")
 
-# Set Microphone parameters
-with sr.Microphone() as source:
-        r.energy_threshold = 500 
-        r.dynamic_energy_threshold = False
+def configure_microphone():
+    global mic_available
+    try:
+        with sr.Microphone() as source:
+            r.energy_threshold = 500
+            r.dynamic_energy_threshold = False
+        return True
+    except Exception:
+        mic_available = False
+        print("Warning: microphone input is unavailable. Proton will continue in text-only mode until PyAudio is installed.")
+        traceback.print_exc()
+        return False
+
+
+configure_microphone()
 
 # Audio to String
 def record_audio():
+    if not mic_available:
+        time.sleep(0.2)
+        return ''
+
     with sr.Microphone() as source:
         r.pause_threshold = 0.8
         voice_data = ''
@@ -80,7 +110,7 @@ def record_audio():
 def respond(voice_data):
     global file_exp_status, files, is_awake, path
     print(voice_data)
-    voice_data.replace('proton','')
+    voice_data = voice_data.replace('proton','')
     app.eel.addUserMsg(voice_data)
 
     if is_awake==False:
@@ -244,10 +274,8 @@ while True:
         except SystemExit:
             reply("Exit Successfull")
             break
-        except:
+        except Exception:
             #some other exception got raised
             print("EXCEPTION raised while closing.") 
             break
         
-
-
